@@ -1,0 +1,66 @@
+-- Selecting all sales data where region is not null
+select * from SalesData
+where region is not null
+order by 3,4;
+
+-- Select sales data for a specific region
+select Location, date, total_sales, new_sales, total_profit, population
+from SalesData
+where location='New York'
+order by 1,2;
+
+-- Looking at Total Sales vs Total Profit
+select Location, date, total_sales, total_profit, (total_profit/total_sales)*100 as profit_ratio
+from SalesData
+where location='New York'
+order by 1,2;
+
+-- Looking at Total Sales vs Population
+select Location, date, total_sales, population, (total_sales/population)*100 as sales_ratio_population
+from SalesData
+where location='New York'
+order by 1,2;
+
+-- Looking at regions with the highest sales compared to population
+select Location, population, MAX(total_sales) as HighestSalesCount, Max((total_sales/population))*100 as PercentSalesPopulation
+from SalesData
+group by population, location
+order by PercentSalesPopulation desc;
+
+-- Creating a temporary table for sales data
+create table #PercentSalesPopulation
+(
+ region nvarchar(255),
+ location nvarchar(255),
+ date datetime,
+ Population numeric,
+ New_sales numeric,
+ RollingSales numeric
+);
+
+-- Inserting data into the temporary table
+insert into #PercentSalesPopulation
+select loc.region, loc.location, loc.date, loc.population, sal.new_sales,
+SUM(CONVERT(int, sal.new_sales)) OVER (Partition by loc.location order by loc.location, loc.date) as RollingSales
+from SalesData loc
+join SalesDetails sal
+on loc.location=sal.location
+and loc.date=sal.date;
+
+-- Selecting data from the temporary table
+select *, (RollingSales/population)*100 
+from #PercentSalesPopulation;
+
+-- Creating a view to store data for later visualizations
+create view PercentSalesPopulation as
+select loc.region, loc.location, loc.date, loc.population, sal.new_sales,
+SUM(CONVERT(int, sal.new_sales)) OVER (Partition by loc.location order by loc.location, loc.date) as RollingSales
+from SalesData loc
+join SalesDetails sal
+on loc.location=sal.location
+and loc.date=sal.date
+where loc.region is not null;
+
+-- Selecting data from the view
+select *
+from PercentSalesPopulation;
